@@ -1,5 +1,5 @@
 import { PAssetsEntry, PCredential, PScriptContext, PTokenName, PTxInInfo, PTxOut, PTxOutRef, PValue, bool, int, list, pBool, pList, perror, pfn, phoist, pif, pisEmpty, plet, pmatch, pnilData, pstruct, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
-import { FreezeableAccount } from "./types/Account";
+import { FreezeableAccount, FreezeableAccountState } from "./types/Account";
 import { passert } from "./passert";
 
 export const AccountManagerRdmr = pstruct({
@@ -11,7 +11,11 @@ export const AccountManagerRdmr = pstruct({
         amount: int
     },
     Receive: {},
-    ForwardCompatibility: {}
+    ForwardCompatibility: {},
+    // non standard redeemers (meant for state modification)
+    NewState: {
+        next: FreezeableAccountState.type
+    }
 });
 
 export const accountManager = pfn([
@@ -97,6 +101,52 @@ export const accountManager = pfn([
     return passert.$(
         pmatch( rdmr )
         .onForwardCompatibility( _ => perror( bool ) )
+        .onNewState(({ next }) => {
+
+            const singleOwnIn = pisEmpty.$( ownIns.tail );
+            const singleOwnOut = pisEmpty.$( ownOuts.tail );
+            const ownIn = validatingInput;
+            const ownOut = plet( ownOuts.head );
+
+            const noAccountsCreated = pisEmpty.$(
+                tx.mint.filter( isOwnAssetEntry )
+            );
+
+            const ownAssets = plet( getOwnAssets.$( ownValue ) );
+
+            const ownAsset = plet( ownAssets.head );
+
+            const ownAssetName = plet( ownAsset.fst );
+
+            const isValidAccount =
+                // single asset of policy
+                pisEmpty.$( ownAssets.tail )
+                // quantity is 1
+                .and( ownAsset.snd.eq( 1 ) );
+
+            const isValidOutAccount = ownOut.value.amountOf( account.currencySym, ownAssetName ).eq( 1 );
+
+            const inAccount = account;
+            const outAccount = plet(
+                pmatch( ownOut.datum )
+                .onInlineDatum(({ datum }) => punsafeConvertType( datum, FreezeableAccount.type ) )
+                ._(_ => perror( FreezeableAccount.type ))
+            );
+
+            const preservedAccountInfos = inAccount.amount.eq( outAccount.amount )
+            .and( inAccount.credentials.eq( outAccount.credentials ) )
+            .and( inAccount.currencySym.eq( outAccount.currencySym ) );
+
+            const stateUpdated = outAccount.state.eq( next );
+
+            return singleOwnIn
+            .and( singleOwnOut )
+            .and( noAccountsCreated )
+            .and( isValidAccount )
+            .and( isValidOutAccount )
+            .and( preservedAccountInfos )
+            .and( stateUpdated )
+        })
         .onMint( mint => {
 
             const singleOwnIn = pisEmpty.$( ownIns.tail );
@@ -290,6 +340,8 @@ export const accountManager = pfn([
                 )
             );
 
+            const senderNotFrozen = account.state.raw.index.eq( 0 ); // FreezeableAccountState.Ok({})
+
             return onlyTwoOwnIns
             .and( onlyTwoOwnOuts )
             .and( senderHasEnoughValue )
@@ -300,6 +352,7 @@ export const accountManager = pfn([
             .and( preservedReceiver )
             .and( correctTransfer )
             .and( senderSigned )
+            .and( senderNotFrozen )
         })
     )
 })
