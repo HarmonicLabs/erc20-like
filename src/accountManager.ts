@@ -1,4 +1,4 @@
-import { PAssetsEntry, PCredential, PScriptContext, PTokenName, PTxInInfo, PTxOut, PTxOutRef, PValue, bool, int, list, pBool, pList, perror, pfn, phoist, pif, pisEmpty, plet, pmatch, pnilData, pstruct, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
+import { PAssetsEntry, PCredential, PScriptContext, PTokenName, PTxInInfo, PTxOut, PTxOutRef, PValue, bool, int, list, pBool, pList, pStr, pdelay, perror, pfn, phoist, pif, pisEmpty, plet, pmatch, pnilData, pstruct, ptraceIfFalse, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
 import { FreezeableAccount, FreezeableAccountState } from "./types/Account";
 import { passert } from "./passert";
 
@@ -340,6 +340,7 @@ export const accountManager = pfn([
                 )
             );
 
+            // inlined
             const senderNotFrozen = account.state.raw.index.eq( 0 ); // FreezeableAccountState.Ok({})
 
             return onlyTwoOwnIns
@@ -352,7 +353,7 @@ export const accountManager = pfn([
             .and( preservedReceiver )
             .and( correctTransfer )
             .and( senderSigned )
-            .and( senderNotFrozen )
+            .and( ptraceIfFalse.$(pdelay(pStr("frozen"))).$( senderNotFrozen ) )
         })
     )
 })
