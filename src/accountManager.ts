@@ -1,4 +1,4 @@
-import { PAssetsEntry, PCredential, PScriptContext, PTokenName, PTxInInfo, PTxOut, PTxOutRef, PValue, bool, int, list, pBool, pList, pStr, pdelay, perror, pfn, phoist, pif, pisEmpty, plet, pmatch, pnilData, pstruct, ptraceIfFalse, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
+import { PAssetsEntry, PCredential, PScriptContext, PTokenName, PTxInInfo, PTxOut, PTxOutRef, PValue, PValueEntry, bool, int, list, pBool, pList, pStr, pdelay, perror, pfn, phoist, pif, pisEmpty, plet, pmatch, pnilData, pstruct, ptraceIfFalse, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
 import { FreezeableAccount, FreezeableAccountState } from "./types/Account";
 import { passert } from "./passert";
 
@@ -73,7 +73,7 @@ export const accountManager = pfn([
     const ownIns = plet( tx.inputs.filter( isOwnInput ) );
 
     const isOwnAssetEntry = plet(
-        pfn([ PAssetsEntry.type ], bool)
+        pfn([ PValueEntry.type ], bool)
         (({ fst: policy }) => policy.eq( account.currencySym ))
     );
 

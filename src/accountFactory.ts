@@ -93,8 +93,8 @@ export const accountFactory = pfn([
                     FreezeableAccount.Account({
                         amount: pDataI( 0 ),
                         currencySym: pBSToData.$( ownPolicy ),
-                        credentials: punsafeConvertType(fstIn.address.credential, data),
-                        state: punsafeConvertType(FreezeableAccountState.Ok({}), data)
+                        credentials: fstIn.address.credential as any,
+                        state: FreezeableAccountState.Ok({})
                     })
                 ))
                 ._(_ => perror( bool )) as Term<PBool>

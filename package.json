@@ -14,7 +14,10 @@
         "build:light": "tsc --project ./tsconfig.json && tsc-alias -p ./tsconfig.json",
         "buidl": "npm run build",
         "ci": "npm run test && npm run build",
-        "start": "npm run build && node dist/miner/index.js mine"
+        "start": "npm run compile",
+        "compile": "npm run build && node dist/scripts/compileContracts.js",
+        "createAccountTx": "npm run build && node dist/scripts/createAccountTx.js",
+        "mintFrezeableTx": "npm run build && node dist/scripts/mintFrezeableTx.js"
     },
     "publishConfig": {
         "registry": "https://registry.npmjs.org"
@@ -47,8 +50,10 @@
     },
     "homepage": "https://github.com/HarmonicLabs/plu-ts#readme",
     "dependencies": {
+        "@harmoniclabs/blockfrost-pluts": "^0.1.3",
+        "@harmoniclabs/crypto": "^0.1.0",
         "@harmoniclabs/obj-utils": "^1.0.0",
-        "@harmoniclabs/plu-ts": "^0.6.0",
+        "@harmoniclabs/plu-ts": "^0.6.5",
         "@harmoniclabs/uint8array-utils": "^1.0.0"
     },
     "devDependencies": {
