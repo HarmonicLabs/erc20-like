@@ -1,4 +1,4 @@
-import { PAssetsEntry, PCredential, PScriptContext, PTokenName, PTxInInfo, PTxOut, PTxOutRef, PValue, PValueEntry, bool, int, list, pBool, pList, pStr, pdelay, perror, pfn, phoist, pif, pisEmpty, plet, pmatch, pnilData, pstruct, ptraceIfFalse, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
+import { PAssetsEntry, PCredential, PScriptContext, PTxInInfo, PTxOut, PTxOutRef, PValue, PValueEntry, bool, int, list, pBool, pList, pStr, pdelay, peqInt, perror, pfn, phoist, pif, pisEmpty, plet, pmatch, pstruct, ptraceIfFalse, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
 import { FreezeableAccount, FreezeableAccountState } from "./types/Account";
 import { passert } from "./passert";
 
@@ -69,8 +69,17 @@ export const accountManager = pfn([
         )
     );
 
-    const ownOuts = plet( tx.outputs.filter( isOwnOutput ) );
-    const ownIns = plet( tx.inputs.filter( isOwnInput ) );
+    // the compiler was automatically hoisting the "tail" and "head"
+    // since some redeemers only require a single input or output
+    // and others require 2
+    // it was causing calling 2 times `tail` or `tail.head` on single element lists
+    // failing the contract
+    // this is an easy fix, but I'm lazy so for now we'll let manually in each redeemer
+
+    // inlined in each redeemer that needs it
+    const _ownOuts = tx.outputs.filter( isOwnOutput );
+    // inlined in each redeemer that needs it
+    const _ownIns = tx.inputs.filter( isOwnInput );
 
     const isOwnAssetEntry = plet(
         pfn([ PValueEntry.type ], bool)
@@ -101,7 +110,9 @@ export const accountManager = pfn([
     return passert.$(
         pmatch( rdmr )
         .onForwardCompatibility( _ => perror( bool ) )
-        .onNewState(({ next }) => {
+        .onNewState(({ next }) =>
+        plet( _ownOuts ).in( ownOuts =>
+        plet( _ownIns ).in( ownIns => {
 
             const singleOwnIn = pisEmpty.$( ownIns.tail );
             const singleOwnOut = pisEmpty.$( ownOuts.tail );
@@ -120,11 +131,13 @@ export const accountManager = pfn([
 
             const isValidAccount =
                 // single asset of policy
-                pisEmpty.$( ownAssets.tail )
+                ownAssets.length.eq( 1 )
                 // quantity is 1
                 .and( ownAsset.snd.eq( 1 ) );
 
-            const isValidOutAccount = ownOut.value.amountOf( account.currencySym, ownAssetName ).eq( 1 );
+            const isValidOutAccount = peqInt.$(
+                ownOut.value.amountOf( account.currencySym, ownAssetName )
+            ).$( 1 );
 
             const inAccount = account;
             const outAccount = plet(
@@ -146,8 +159,10 @@ export const accountManager = pfn([
             .and( isValidOutAccount )
             .and( preservedAccountInfos )
             .and( stateUpdated )
-        })
-        .onMint( mint => {
+        })))
+        .onMint( mint =>
+        plet( _ownOuts ).in( ownOuts =>
+        plet( _ownIns ).in( ownIns => {
 
             const singleOwnIn = pisEmpty.$( ownIns.tail );
 
@@ -161,7 +176,7 @@ export const accountManager = pfn([
 
             const isValidAccount =
                 // single asset of policy
-                pisEmpty.$( ownAssets.tail )
+                ownAssets.length.eq( 1 )
                 // quantity is 1
                 .and( ownAsset.snd.eq( 1 ) );
 
@@ -186,7 +201,7 @@ export const accountManager = pfn([
                     ._( _ => perror( FreezeableAccount.type ) )   
                 );
 
-                return pisEmpty.$( nextAssets.tail )
+                return nextAssets.length.eq( 1 )
                 .and(
                     // preserve nft
                     nextAsset.fst.eq( ownAssetName )
@@ -200,17 +215,20 @@ export const accountManager = pfn([
                 .and( nextAccount.amount.eq( expectedOutAmt ) )
             });
 
-            return singleOwnIn
-            .and(  noAccountsCreated )
-            .and(  isValidAccount )
-            .and(  singleOutToSelf )
-            .and(  nonNegativeOutAmt )
-            .and(  correctOwnOut );
-        })
+            return (
+                singleOwnIn
+                .and(  noAccountsCreated )
+                .and(  isValidAccount )
+                .and(  singleOutToSelf )
+                .and(  nonNegativeOutAmt )
+                .and(  correctOwnOut )
+            );
+        })))
         // essentially forwards to Transfer (checks that the other input is spent with transfer)
-        .onReceive( _ => {
+        .onReceive( _ =>
+        plet( _ownIns ).in( ownIns => {
             
-            const onlyTwoOwnIns = pisEmpty.$( ownIns.tail.tail );
+            const onlyTwoOwnIns = ownIns.length.eq( 2 );
 
             const receiverIn = validatingInput;
             const receiverInRef = ownUtxoRef;
@@ -242,7 +260,7 @@ export const accountManager = pfn([
                     .onTransfer(({ to, amount }) => {
 
                         return amount.gt( 0 )
-                        .and( to.eq( receiverIn.address.credential ) )
+                        .and( to.eq( account.credentials ) )
                     })
                     // sender redeemer is not transfer
                     ._( _ => perror( bool ) )
@@ -253,11 +271,13 @@ export const accountManager = pfn([
 
             return onlyTwoOwnIns
             .and(  correctSenderTransfer );
-        })
-        .onTransfer(({ to, amount }) => {
+        }))
+        .onTransfer(({ to, amount }) =>
+        plet( _ownOuts ).in( ownOuts =>
+        plet( _ownIns ).in( ownIns => {
             
-            const onlyTwoOwnIns = pisEmpty.$( ownIns.tail.tail );
-            const onlyTwoOwnOuts = pisEmpty.$( ownOuts.tail.tail );
+            const onlyTwoOwnIns = ownIns.length.eq( 2 );
+            const onlyTwoOwnOuts = ownOuts.length.eq( 2 );
             const senderHasEnoughValue = account.amount.gtEq( amount );
             const noNewAccounts = pisEmpty.$( tx.mint.filter( isOwnAssetEntry ) );
 
@@ -279,7 +299,7 @@ export const accountManager = pfn([
             const senderAsset = plet( senderAssets.head );
             const senderIsValid =
                 // single asset of policy
-                pisEmpty.$( senderAssets.tail )
+                senderAssets.length.eq( 1 )
                 // quantity is 1
                 .and( senderAsset.snd.eq( 1 ) );
             const senderName = senderAsset.fst;
@@ -288,25 +308,35 @@ export const accountManager = pfn([
             const receiverAsset = receiverAssets.head;
             const receiverIsValid = 
                 // single asset of policy
-                pisEmpty.$( receiverAssets.tail )
+                receiverAssets.length.eq( 1 )
                 // quantity is 1
                 .and( receiverAsset.snd.eq( 1 ) );
             const receiverName = receiverAsset.fst;
 
-            const mkPListTxOut = pList( PTxOut.type );
-
-            const fstOwnOut = plet( ownOuts.head );
-            const sndOwnOut = plet( ownOuts.tail.head );
-
             const sortedOuts = plet(
                 pif( list( PTxOut.type ) )
-                .$( fstOwnOut.value.amountOf( account.currencySym, senderName ).eq( 1 ) )
-                .then( mkPListTxOut([ fstOwnOut, sndOwnOut ]) )
-                .else( mkPListTxOut([ sndOwnOut, fstOwnOut ]) )
+                .$(
+                    peqInt.$(
+                        ownOuts.head.value.amountOf( account.currencySym, senderName )
+                    ).$( 1 )
+                )
+                .then( ownOuts )
+                .else(
+                    pList( PTxOut.type )
+                    // ownOuts.reversed; but more efficient
+                    ([ ownOuts.tail.head, ownOuts.head ])
+                )
             );
 
             const senderOut = plet( sortedOuts.head );
             const receiverOut = plet( sortedOuts.tail.head );
+
+            const senderOutIsValid = peqInt.$(
+                senderOut.value.amountOf( account.currencySym, receiverName )
+            ).$( 1 )
+            const receiverOutIsValid = peqInt.$(
+                receiverOut.value.amountOf( account.currencySym, receiverName )
+            ).$( 1 )
 
             const getAccount = phoist(
                 pfn([ PTxOut.type ], FreezeableAccount.type )
@@ -349,11 +379,13 @@ export const accountManager = pfn([
             .and( noNewAccounts )
             .and( senderIsValid )
             .and( receiverIsValid )
+            .and( senderOutIsValid )
+            .and( receiverOutIsValid )
             .and( preservedSender )
             .and( preservedReceiver )
             .and( correctTransfer )
             .and( senderSigned )
             .and( ptraceIfFalse.$(pdelay(pStr("frozen"))).$( senderNotFrozen ) )
-        })
+        })))
     )
 })
