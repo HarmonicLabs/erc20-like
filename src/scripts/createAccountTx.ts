@@ -12,8 +12,7 @@ void async function createAccountTx()
     });
 
     const txBuilder = new TxBuilder(
-        await blockfrost.getProtocolParameters(),
-        await blockfrost.getGenesisInfos()
+        await blockfrost.getProtocolParameters()
     );
 
     const myAddr = Address.fromString( await readFile("./snd.addr", "utf8" ) );

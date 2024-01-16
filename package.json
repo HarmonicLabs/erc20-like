@@ -18,7 +18,9 @@
         "compile": "npm run build && node dist/scripts/compileContracts.js",
         "createAccountTx": "npm run build && node dist/scripts/createAccountTx.js",
         "mintFrezeableTx": "npm run build && node dist/scripts/mintFrezeableTx.js",
-        "transferFstToSndTx": "npm run build && node dist/scripts/transferFstToSndTx.js"
+        "transferFstToSndTx": "npm run build && node dist/scripts/transferFstToSndTx.js",
+        "transferFrozen": "npm run build && node dist/scripts/transferFrozen.js",
+        "changeStateTx": "npm run build && node dist/scripts/changeStateTx.js"
     },
     "publishConfig": {
         "registry": "https://registry.npmjs.org"
@@ -55,6 +57,7 @@
         "@harmoniclabs/crypto": "^0.1.0",
         "@harmoniclabs/obj-utils": "^1.0.0",
         "@harmoniclabs/plu-ts": "^0.6.5",
+        "@harmoniclabs/plutus-data": "^1.0.0",
         "@harmoniclabs/uint8array-utils": "^1.0.0"
     },
     "devDependencies": {

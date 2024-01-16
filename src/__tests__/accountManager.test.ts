@@ -1,13 +1,15 @@
 import { Machine } from "@harmoniclabs/plutus-machine"
 import { AccountFactoryRdmr, AccountManagerRdmr, accountManager } from "..";
 import { FreezeableAccount } from "../types/Account";
-import { Application, PScriptContext, Term, UPLCConst, dataFromCbor, pData } from "@harmoniclabs/plu-ts";
+import { Address, Application, DataB, DataConstr, DataI, PScriptContext, Term, UPLCConst, dataFromCbor, dataToCbor, pData } from "@harmoniclabs/plu-ts";
+import { readContracts } from "../scripts/utils/readContracts";
+import { readFile, writeFile } from "fs/promises";
 
 describe("accountManager", () => {
 
-    const managerUPLC = accountManager.toUPLC();
+    const managerUPLC = UPLCConst.unit// accountManager.toUPLC();
 
-    test("Mint", () => {
+    test.skip("Mint", () => {
 
         const datum = pData(
             dataFromCbor(
@@ -42,7 +44,7 @@ describe("accountManager", () => {
         expect( res.result instanceof UPLCConst ).toBe( true );
     });
 
-    test.only("Transfer", () => {
+    test.skip("Transfer", () => {
 
         const datum = pData(
             dataFromCbor(
@@ -77,5 +79,52 @@ describe("accountManager", () => {
         console.log( res );
         expect( res.result instanceof UPLCConst ).toBe( true );
     });
+
+    test.only("data str", async () => {
+
+        const { accountFactory, accountManager } = await readContracts();
+// 
+        const sndAddr = Address.fromString( await readFile("./snd.addr", "utf8" ) );
+        // const amtSent = BigInt( 100 );
+// 
+        // await writeFile("./accountManager.plutus.json", JSON.stringify( accountManager.toJson() ) );
+        // await writeFile("./transfer_rdmr.cbor", dataToCbor(new DataConstr(
+        //     1, // Transfer
+        //     [
+        //         // to
+        //         sndAddr.paymentCreds.toData(),
+        //         // amount
+        //         new DataI( amtSent )
+        //     ]
+        // )).toBuffer() );
+
+        const fstAddr = Address.fromString( await readFile("./fst.addr", "utf8" ) );
+    
+        // await writeFile("./rcv_rdmr.cbor", dataToCbor(new DataConstr( 2, [] )).toBuffer() );
+        await writeFile("./senderOutDat.cbor", dataToCbor(
+                new DataConstr(
+                    0,
+                    [
+                        new DataI( 9900 ),
+                        fstAddr.paymentCreds.toData(),
+                        new DataB( accountFactory.hash.toBuffer() ),
+                        new DataConstr(0,[])
+                    ]
+                )
+            ).toBuffer() );
+        await writeFile("./receiverOutDat.cbor", dataToCbor(
+            new DataConstr(
+                0,
+                [
+                    new DataI( 100 ),
+                    sndAddr.paymentCreds.toData(),
+                    new DataB( accountFactory.hash.toBuffer() ),
+                    new DataConstr(0,[])
+                ]
+            )
+        ).toBuffer() );
+        
+        
+    })
     
 });

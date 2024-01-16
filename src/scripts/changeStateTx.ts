@@ -1,5 +1,5 @@
 import { BlockfrostPluts } from "@harmoniclabs/blockfrost-pluts"
-import { Address, DataB, DataConstr, DataI, PCredential, PaymentCredentials, PrivateKey, TxBuilder, Value, dataToCbor, eqData, isData, pData, pDataB, pDataI } from "@harmoniclabs/plu-ts";
+import { Address, DataConstr, DataI, PCredential, PaymentCredentials, PrivateKey, TxBuilder, Value, dataToCbor, eqData, isData, pData, pDataB, pDataI } from "@harmoniclabs/plu-ts";
 import { readFile } from "fs/promises";
 import { readContracts } from "./utils/readContracts";
 import { sha2_256 } from "@harmoniclabs/crypto";
@@ -25,15 +25,8 @@ void async function mintFrezeableTx()
     const myAccountUtxo = contractUtxos.find( u => 
         ( u.resolved.datum instanceof DataConstr ) &&
         eqData( 
-            u.resolved.datum.fields[0],
-            new DataI( 0 )
-        ) &&
-        eqData( 
             u.resolved.datum.fields[1],
             myAddr.paymentCreds.toData()
-        ) && (
-            u.resolved.datum.fields[3] instanceof DataConstr &&
-            u.resolved.datum.fields[3].constr === BigInt(0) // state === ok
         )
     );
 
@@ -46,10 +39,19 @@ void async function mintFrezeableTx()
     );
 
     const utxo = myUTxOs[0];
+    const inDatum = myAccountUtxo.resolved.datum as DataConstr;
 
-    const mintAmt = BigInt( 10_000 );
-    const inputErc20Qty = ((myAccountUtxo.resolved.datum as DataConstr).fields[0] as DataI).int;
-    const state = (myAccountUtxo.resolved.datum as DataConstr).fields[3];
+    const nextState = new DataConstr(1,[]) // FreezeableAccountState.Frozen({});
+
+    const nextDatum = new DataConstr(
+        0, // FreezeableAccount.account
+        [
+            inDatum.fields[0],  // amount
+            inDatum.fields[1],  // credentials
+            inDatum.fields[2],  // currencySym
+            nextState,          // state
+        ]
+    )
 
     const tx = txBuilder.buildSync({
         inputs: [
@@ -58,7 +60,10 @@ void async function mintFrezeableTx()
                 inputScript: {
                     script: accountManager,
                     datum: "inline",
-                    redeemer: new DataConstr( 0, [ new DataI( mintAmt ) ] )
+                    redeemer: new DataConstr(
+                        4, // NewState (non standard redeemer)
+                        [ nextState ]
+                    )
                 }
             },
             { utxo }
@@ -68,15 +73,7 @@ void async function mintFrezeableTx()
             {
                 address: accountManagerAddr,
                 value: myAccountUtxo.resolved.value,
-                datum: new DataConstr(
-                    0,
-                    [
-                        new DataI( inputErc20Qty + mintAmt ),
-                        myAddr.paymentCreds.toData(),
-                        new DataB( accountFactory.hash.toBuffer() ),
-                        state
-                    ]
-                )
+                datum: nextDatum
             }
         ],
         changeAddress: myAddr

@@ -90,11 +90,11 @@ export const accountManager = pfn([
         pfn([ FreezeableAccount.type, FreezeableAccount.type ], bool )
         (( inAccount, outAccount ) => {
 
-            return inAccount.credentials.eq( outAccount.credentials )
-            .and(  inAccount.currencySym.eq( outAccount.currencySym ) )
+            return ptraceIfFalse.$(pdelay(pStr("creds"))).$( inAccount.credentials.eq( outAccount.credentials ) )
+            .and(  ptraceIfFalse.$(pdelay(pStr("currSym"))).$( inAccount.currencySym.eq( outAccount.currencySym ) ) )
             // checking the state to be equal is needed for
             // easier inidpendent offchain implementation (wallets)
-            .and(  inAccount.state.eq( outAccount.state ) )
+            .and(  ptraceIfFalse.$(pdelay(pStr("state"))).$( inAccount.state.eq( outAccount.state ) ) );
         })
     );
 
@@ -366,7 +366,20 @@ export const accountManager = pfn([
             const receiverInAccount = plet( getAccount.$( receiverIn ) );
             const receiverOutAccount = plet( getAccount.$( receiverOut ) );
 
-            const preservedSender = preservedAccount.$( account ).$( senderOutAccount );
+            const preservedSender = preservedAccount
+            .$(
+                FreezeableAccount.fromData(
+                    ptraceData.$(
+                        account as any
+                    )
+                )
+            ).$(
+                FreezeableAccount.fromData(
+                    ptraceData.$(
+                        senderOutAccount as any
+                    )
+                )
+            );
             const preservedReceiver = preservedAccount.$( receiverInAccount ).$( receiverOutAccount );
 
             const expectedSenderAmount = account.amount.sub( amount );
@@ -388,18 +401,18 @@ export const accountManager = pfn([
             // inlined
             const senderNotFrozen = account.state.raw.index.eq( 0 ); // FreezeableAccountState.Ok({})
 
-            return onlyTwoOwnIns
-            .and( onlyTwoOwnOuts )
-            .and( senderHasEnoughValue )
-            .and( noNewAccounts )
-            .and( senderIsValid )
             // receiverIsValid checked in "Receive" redeemer
-            .and( senderOutIsValid )
             // receiverOutIsValid checked in "Receive" redeemer
-            .and( preservedSender )
-            .and( preservedReceiver )
-            .and( correctTransfer )
-            .and( senderSigned )
+            return ptraceIfFalse.$(pdelay(pStr("onlyTwoOwnIns"))).$( onlyTwoOwnIns )
+            .and( ptraceIfFalse.$(pdelay(pStr("onlyTwoOwnOuts"))).$( onlyTwoOwnOuts ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("senderHasEnoughValue"))).$( senderHasEnoughValue ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("noNewAccounts"))).$( noNewAccounts ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("senderIsValid"))).$( senderIsValid ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("senderOutIsValid"))).$( senderOutIsValid ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("preservedSender"))).$( preservedSender ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("preservedReceiver"))).$( preservedReceiver ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("correctTransfer"))).$( correctTransfer ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("senderSigned"))).$( senderSigned ) )
             .and( ptraceIfFalse.$(pdelay(pStr("frozen"))).$( senderNotFrozen ) )
         })))
     )
