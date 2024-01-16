@@ -1,4 +1,4 @@
-import { PAssetsEntry, PCredential, PScriptContext, PTxInInfo, PTxOut, PTxOutRef, PValue, PValueEntry, bool, int, list, pBool, pList, pStr, pdelay, peqInt, perror, pfn, phoist, pif, pisEmpty, plet, pmatch, pstruct, ptraceIfFalse, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
+import { PAssetsEntry, PCredential, PScriptContext, PTxInInfo, PTxOut, PTxOutRef, PValue, PValueEntry, bool, int, list, pBool, pList, pStr, pdelay, peqInt, perror, pfn, phoist, pif, pisEmpty, plet, pmatch, pstruct, ptraceData, ptraceIfFalse, ptraceInt, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
 import { FreezeableAccount, FreezeableAccountState } from "./types/Account";
 import { passert } from "./passert";
 
@@ -332,7 +332,7 @@ export const accountManager = pfn([
             const receiverOut = plet( sortedOuts.tail.head );
 
             const senderOutIsValid = peqInt.$(
-                senderOut.value.amountOf( account.currencySym, receiverName )
+                senderOut.value.amountOf( account.currencySym, senderName )
             ).$( 1 )
             const receiverOutIsValid = peqInt.$(
                 receiverOut.value.amountOf( account.currencySym, receiverName )
@@ -373,18 +373,18 @@ export const accountManager = pfn([
             // inlined
             const senderNotFrozen = account.state.raw.index.eq( 0 ); // FreezeableAccountState.Ok({})
 
-            return onlyTwoOwnIns
-            .and( onlyTwoOwnOuts )
-            .and( senderHasEnoughValue )
-            .and( noNewAccounts )
-            .and( senderIsValid )
-            .and( receiverIsValid )
-            .and( senderOutIsValid )
-            .and( receiverOutIsValid )
-            .and( preservedSender )
-            .and( preservedReceiver )
-            .and( correctTransfer )
-            .and( senderSigned )
+            return ptraceIfFalse.$(pdelay(pStr("onlyTwoOwnIns"))).$( onlyTwoOwnIns )
+            .and( ptraceIfFalse.$(pdelay(pStr("onlyTwoOwnOuts"))).$( onlyTwoOwnOuts ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("senderHasEnoughValue"))).$( senderHasEnoughValue ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("noNewAccounts"))).$( noNewAccounts ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("senderIsValid"))).$( senderIsValid ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("receiverIsValid"))).$( receiverIsValid ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("senderOutIsValid"))).$( senderOutIsValid ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("receiverOutIsValid"))).$( receiverOutIsValid ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("preservedSender"))).$( preservedSender ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("preservedReceiver"))).$( preservedReceiver ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("correctTransfer"))).$( correctTransfer ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("senderSigned"))).$( senderSigned ) )
             .and( ptraceIfFalse.$(pdelay(pStr("frozen"))).$( senderNotFrozen ) )
         })))
     )

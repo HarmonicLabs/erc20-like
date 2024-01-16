@@ -17,7 +17,8 @@
         "start": "npm run compile",
         "compile": "npm run build && node dist/scripts/compileContracts.js",
         "createAccountTx": "npm run build && node dist/scripts/createAccountTx.js",
-        "mintFrezeableTx": "npm run build && node dist/scripts/mintFrezeableTx.js"
+        "mintFrezeableTx": "npm run build && node dist/scripts/mintFrezeableTx.js",
+        "transferFstToSndTx": "npm run build && node dist/scripts/transferFstToSndTx.js"
     },
     "publishConfig": {
         "registry": "https://registry.npmjs.org"

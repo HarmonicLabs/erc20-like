@@ -24,6 +24,8 @@ void async function transferFstToSndTx()
     const accountManagerAddr = Address.testnet( PaymentCredentials.script( accountManager.hash) );
     const contractUtxos = await blockfrost.addressUtxos( accountManagerAddr );
     
+    const amtSent = BigInt( 100 );
+
     const myAccountUtxo = contractUtxos.find( u => 
         ( u.resolved.datum instanceof DataConstr ) &&
         eqData( 
@@ -31,7 +33,7 @@ void async function transferFstToSndTx()
             fstAddr.paymentCreds.toData()
         ) && (
             u.resolved.datum.fields[0] instanceof DataI && // amount
-            u.resolved.datum.fields[0].int >= BigInt( 9_999 )
+            u.resolved.datum.fields[0].int >= amtSent
         )
     );
     if( !myAccountUtxo ) throw new Error("missing myAccountUtxo");
@@ -45,10 +47,8 @@ void async function transferFstToSndTx()
     );
     if( !sndAccountUtxo ) throw new Error("missing sndAccountUtxo");
 
-
     const inputErc20Qty = ((myAccountUtxo.resolved.datum as DataConstr).fields[0] as DataI).int;
-    const change = BigInt( 5000 );
-    const amtSent = inputErc20Qty - change
+    const change = inputErc20Qty - amtSent;
 
     const prvt = PrivateKey.fromCbor(
         JSON.parse(
