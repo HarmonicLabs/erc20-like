@@ -16,14 +16,14 @@ void async function createAccountTx()
         await blockfrost.getGenesisInfos()
     );
 
-    const myAddr = Address.fromString( await readFile("./fst.addr", "utf8" ) );
+    const myAddr = Address.fromString( await readFile("./snd.addr", "utf8" ) );
     const myUTxOs = await blockfrost.addressUtxos( myAddr );
 
     const { accountFactory, accountManager } = await readContracts();
 
     const prvt = PrivateKey.fromCbor(
         JSON.parse(
-            await readFile("./fst.skey", "utf8")
+            await readFile("./snd.skey", "utf8")
         ).cborHex
     );
 
