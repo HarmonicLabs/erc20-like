@@ -65,18 +65,13 @@ void async function mintFrezeableTx()
                         [ nextState ]
                     )
                 }
-            },
-            { utxo }
-        ],
-        collaterals: [ utxo ],
-        outputs: [
-            {
-                address: accountManagerAddr,
-                value: myAccountUtxo.resolved.value,
-                datum: nextDatum
             }
         ],
-        changeAddress: myAddr
+        collaterals: [ utxo ],
+        change: {
+            address: accountManagerAddr,
+            datum: nextDatum
+        }
     });
 
     tx.signWith( prvt );

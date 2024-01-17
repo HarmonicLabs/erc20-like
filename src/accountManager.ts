@@ -1,4 +1,4 @@
-import { PAssetsEntry, PCredential, PScriptContext, PTxInInfo, PTxOut, PTxOutRef, PValue, PValueEntry, bool, int, list, pBool, pList, pStr, pdelay, peqInt, perror, pfn, phoist, pif, pisEmpty, plet, pmatch, pstruct, ptraceBs, ptraceData, ptraceIfFalse, ptraceInt, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
+import { PAssetsEntry, PCredential, PScriptContext, PTxInInfo, PTxOut, PTxOutRef, PValue, PValueEntry, bool, int, list, pBool, pList, pStr, pdelay, peqInt, perror, pfn, phoist, pif, pisEmpty, plet, pmatch, pstruct, ptrace, ptraceBs, ptraceData, ptraceIfFalse, ptraceInt, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
 import { FreezeableAccount, FreezeableAccountState } from "./types/Account";
 import { passert } from "./passert";
 
@@ -366,20 +366,13 @@ export const accountManager = pfn([
             const receiverInAccount = plet( getAccount.$( receiverIn ) );
             const receiverOutAccount = plet( getAccount.$( receiverOut ) );
 
+            // cardano node CEK machine wants the `trace` here or else gets mad
+            // both akien and plu-ts machines give no problems without the trace
+            // but the node doesn't like it
             const preservedSender = preservedAccount
-            .$(
-                FreezeableAccount.fromData(
-                    ptraceData.$(
-                        account as any
-                    )
-                )
-            ).$(
-                FreezeableAccount.fromData(
-                    ptraceData.$(
-                        senderOutAccount as any
-                    )
-                )
-            );
+            .$( ptrace( FreezeableAccount.type ).$("").$( account ) )
+            .$( ptrace( FreezeableAccount.type ).$("").$( senderOutAccount ) );
+
             const preservedReceiver = preservedAccount.$( receiverInAccount ).$( receiverOutAccount );
 
             const expectedSenderAmount = account.amount.sub( amount );
@@ -403,16 +396,16 @@ export const accountManager = pfn([
 
             // receiverIsValid checked in "Receive" redeemer
             // receiverOutIsValid checked in "Receive" redeemer
-            return ptraceIfFalse.$(pdelay(pStr("only2OwnIns"))).$( onlyTwoOwnIns )
-            .and( ptraceIfFalse.$(pdelay(pStr("only2OwnOuts"))).$( onlyTwoOwnOuts ) )
-            .and( ptraceIfFalse.$(pdelay(pStr("senderHasEnoughValue"))).$( senderHasEnoughValue ) )
-            .and( ptraceIfFalse.$(pdelay(pStr("noNewAccounts"))).$( noNewAccounts ) )
-            .and( ptraceIfFalse.$(pdelay(pStr("senderIsValid"))).$( senderIsValid ) )
-            .and( ptraceIfFalse.$(pdelay(pStr("senderOutIsValid"))).$( senderOutIsValid ) )
-            .and( ptraceIfFalse.$(pdelay(pStr("preservedSender"))).$( preservedSender ) )
-            .and( ptraceIfFalse.$(pdelay(pStr("preservedReceiver"))).$( preservedReceiver ) )
-            .and( ptraceIfFalse.$(pdelay(pStr("correctTransfer"))).$( correctTransfer ) )
-            .and( ptraceIfFalse.$(pdelay(pStr("senderSigned"))).$( senderSigned ) )
+            return onlyTwoOwnIns
+            .and( onlyTwoOwnOuts )
+            .and( senderHasEnoughValue )
+            .and( noNewAccounts )
+            .and( senderIsValid )
+            .and( senderOutIsValid )
+            .and( preservedSender )
+            .and( preservedReceiver )
+            .and( correctTransfer )
+            .and( senderSigned )
             .and( ptraceIfFalse.$(pdelay(pStr("frozen"))).$( senderNotFrozen ) )
         })))
     )
