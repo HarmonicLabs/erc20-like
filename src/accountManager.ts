@@ -403,8 +403,8 @@ export const accountManager = pfn([
 
             // receiverIsValid checked in "Receive" redeemer
             // receiverOutIsValid checked in "Receive" redeemer
-            return ptraceIfFalse.$(pdelay(pStr("onlyTwoOwnIns"))).$( onlyTwoOwnIns )
-            .and( ptraceIfFalse.$(pdelay(pStr("onlyTwoOwnOuts"))).$( onlyTwoOwnOuts ) )
+            return ptraceIfFalse.$(pdelay(pStr("only2OwnIns"))).$( onlyTwoOwnIns )
+            .and( ptraceIfFalse.$(pdelay(pStr("only2OwnOuts"))).$( onlyTwoOwnOuts ) )
             .and( ptraceIfFalse.$(pdelay(pStr("senderHasEnoughValue"))).$( senderHasEnoughValue ) )
             .and( ptraceIfFalse.$(pdelay(pStr("noNewAccounts"))).$( noNewAccounts ) )
             .and( ptraceIfFalse.$(pdelay(pStr("senderIsValid"))).$( senderIsValid ) )

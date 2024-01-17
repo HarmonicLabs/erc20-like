@@ -43,9 +43,6 @@ void async function transferFstToSndTx()
         ) && (
             u.resolved.datum.fields[0] instanceof DataI && // amount
             u.resolved.datum.fields[0].int >= amtSent
-        ) && (
-            u.resolved.datum.fields[3] instanceof DataConstr &&
-            u.resolved.datum.fields[3].constr === BigInt(0)
         )
     );
     if( !myAccountUtxo ) throw new Error("missing myAccountUtxo");
@@ -92,8 +89,7 @@ void async function transferFstToSndTx()
                     datum: "inline",
                     redeemer: new DataConstr(2, []) // Receive
                 }
-            },
-            { utxo }
+            }
         ],
         collaterals: [ utxo ],
         outputs: [
@@ -108,22 +104,20 @@ void async function transferFstToSndTx()
                         pData( (myAccountUtxo.resolved.datum as DataConstr).fields[3] ) 
                     )
                 })
-            },
-            {
-                address: accountManagerAddr,
-                value: sndAccountUtxo.resolved.value,
-                datum: FreezeableAccount.Account({
-                    amount: pDataI( initialReceiverAmt + amtSent ),
-                    credentials: PCredential.fromData( pData( sndAddr.paymentCreds.toData() ) ) as any,
-                    currencySym: pDataB( accountFactory.hash.toBuffer() ),
-                    state: FreezeableAccountState.fromData(
-                        pData( (sndAccountUtxo.resolved.datum as DataConstr).fields[3] ) 
-                    )
-                })
             }
         ],
         requiredSigners: [ fstAddr.paymentCreds.hash ],
-        changeAddress: fstAddr
+        change: {
+            address: accountManagerAddr,
+            datum: FreezeableAccount.Account({
+                amount: pDataI( initialReceiverAmt + amtSent ),
+                credentials: PCredential.fromData( pData( sndAddr.paymentCreds.toData() ) ) as any,
+                currencySym: pDataB( accountFactory.hash.toBuffer() ),
+                state: FreezeableAccountState.fromData(
+                    pData( (sndAccountUtxo.resolved.datum as DataConstr).fields[3] ) 
+                )
+            })
+        }
     });
 
     tx.signWith( prvt );
