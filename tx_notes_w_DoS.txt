@@ -1,0 +1,15 @@
+fst account
+17cbf7f6244919daedbd724b629096ad7fdd9d2f4dd59624efc3a9abb352fe4d
+
+snd account
+168b3d9d42a2a3ac5a3ea9eab369c380b271824491848d6cbe9a1ce585df4a10
+
+mint to fst
+???
+
+transfer fst to snd
+021af87a532d5b0f9568f97f398be3a48aaed9920a7dd9c4404a35077eebce17
+
+
+change state
+

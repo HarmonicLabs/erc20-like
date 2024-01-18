@@ -7,8 +7,6 @@ export const AccountFactoryRdmr = pstruct({
     Delete: {} // Burn
 })
 
-
-
 export const accountFactory = pfn([
     PValidatorHash.type,
     AccountFactoryRdmr.type,
@@ -86,6 +84,8 @@ export const accountFactory = pfn([
             fstOutToManager
             // has nft
             .and( fstOut.value.amountOf( ownPolicy, ownAssetName ).eq( 1 ) )
+            // prevents DoS by token spam
+            .and( fstOut.value.length.eq( 2 ) )
             // correct output datum
             .and(
                 pmatch( fstOut.datum )
@@ -98,7 +98,7 @@ export const accountFactory = pfn([
                     })
                 ))
                 ._(_ => perror( bool )) as Term<PBool>
-            )
+            );
             
             return onlyOneInput
             .and( inputHasNoOwnTokens )

@@ -1,4 +1,4 @@
-import { PAssetsEntry, PCredential, PScriptContext, PTxInInfo, PTxOut, PTxOutRef, PValue, PValueEntry, bool, int, list, pBool, pList, pStr, pdelay, peqInt, perror, pfn, phoist, pif, pisEmpty, plet, pmatch, pstruct, ptrace, ptraceBs, ptraceData, ptraceIfFalse, ptraceInt, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
+import { PAssetsEntry, PCredential, PScriptContext, PTxInInfo, PTxOut, PTxOutRef, PValue, PValueEntry, TermBool, bool, delayed, int, list, pBool, pList, pStr, pand, pdelay, peqInt, perror, pfn, phoist, pif, pisEmpty, plet, pmatch, pstruct, ptrace, ptraceBs, ptraceData, ptraceIfFalse, ptraceInt, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
 import { FreezeableAccount, FreezeableAccountState } from "./types/Account";
 import { passert } from "./passert";
 
@@ -154,6 +154,8 @@ export const accountManager = pfn([
 
             return singleOwnIn
             .and( singleOwnOut )
+            // prevents DoS due to token spam
+            .and( outValueLenIs2.$( ownOut ) )
             .and( noAccountsCreated )
             .and( isValidAccount )
             .and( isValidOutAccount )
@@ -220,6 +222,8 @@ export const accountManager = pfn([
                 .and(  noAccountsCreated )
                 .and(  isValidAccount )
                 .and(  singleOutToSelf )
+                // prevents DoS due to token spam
+                .and(  outValueLenIs2.$( ownOut ) )
                 .and(  nonNegativeOutAmt )
                 .and(  correctOwnOut )
             );
@@ -260,35 +264,30 @@ export const accountManager = pfn([
                 .else( fstOwnIn )
             );
 
+            // inlined
             // if this is true the transfer of value is checked in the transfer redeemer
-            const correctSenderTransfer = plet(
-                pmatch(
-                    tx.redeemers.find(({ fst: purpose }) =>
+            const correctSenderTransfer =
+                tx.redeemers.some(({ fst: purpose, snd: _senderRdmr }) =>
+                    pand
+                    .$(
                         pmatch( purpose )
                         .onSpending(({ utxoRef }) => utxoRef.eq( senderInRef ) )
                         ._( _ => pBool( false ) )
+                    ).$(
+                        pdelay(
+                            pmatch( punsafeConvertType( _senderRdmr, AccountManagerRdmr.type ) )
+                            .onTransfer(({ amount }) => amount.gt( 0 ))
+                            // sender redeemer is not transfer
+                            ._( _ => perror( bool ) )
+                        )
                     )
-                )
-                .onJust(({ val: { snd: _senderRdmr } }) => {
-                    const senderRdmr = punsafeConvertType( _senderRdmr, AccountManagerRdmr.type )
-                    
-                    return pmatch( senderRdmr )
-                    .onTransfer(({ to, amount }) => {
-
-                        return amount.gt( 0 )
-                        .and( to.eq( account.credentials ) )
-                    })
-                    // sender redeemer is not transfer
-                    ._( _ => perror( bool ) )
-                })
-                // sender redeemer not found
-                .onNothing( _ => perror( bool ) )
-            );
+                );
 
             return onlyTwoOwnIns
             .and(  receiverIsValid )
             .and(  receiverTokenPreserved )
             .and(  correctSenderTransfer );
+            // DoS by token spam checked in `Transfer`
         })))
         .onTransfer(({ to, amount }) =>
         plet( _ownOuts ).in( ownOuts =>
@@ -311,6 +310,25 @@ export const accountManager = pfn([
                 .$( fstOwnIn.utxoRef.eq( senderInRef ) )
                 .then( sndOwnIn )
                 .else( fstOwnIn )
+            );
+
+            const otherInIsRecv = ptrace( bool ).$("")
+            .$(
+                tx.redeemers.some(({ fst: purpose, snd: rdmr }) =>
+                    pand
+                    .$(
+                        pmatch( purpose )
+                        .onSpending(({ utxoRef }) => utxoRef.eq( receiverInRef ) )
+                        ._(_ => pBool( false ) )
+                    )
+                    .$(
+                        pdelay(
+                            pmatch( punsafeConvertType( rdmr, AccountManagerRdmr.type ) )
+                            .onReceive( _ => pBool( true ) )
+                            ._( _ => pBool( false ) )
+                        )
+                    )
+                )
             );
 
             const senderAssets = plet( getOwnAssets.$( senderValue ) );
@@ -398,6 +416,9 @@ export const accountManager = pfn([
             // receiverOutIsValid checked in "Receive" redeemer
             return onlyTwoOwnIns
             .and( onlyTwoOwnOuts )
+            // prevents DoS by token spam
+            .and( ownOuts.every( outValueLenIs2 ) )
+            .and( otherInIsRecv )
             .and( senderHasEnoughValue )
             .and( noNewAccounts )
             .and( senderIsValid )
@@ -406,7 +427,12 @@ export const accountManager = pfn([
             .and( preservedReceiver )
             .and( correctTransfer )
             .and( senderSigned )
-            .and( ptraceIfFalse.$(pdelay(pStr("frozen"))).$( senderNotFrozen ) )
+            .and( ptraceIfFalse.$(pdelay(pStr("frozen"))).$( senderNotFrozen ) );
         })))
     )
-})
+});
+
+const outValueLenIs2 = phoist(
+    pfn([ PTxOut.type ], bool )
+    ( out => out.value.length.eq(2) )
+);

@@ -37,7 +37,17 @@ void async function mintFrezeableTx()
         )
     );
 
-    if( !myAccountUtxo ) throw new Error("missing");
+    if( !myAccountUtxo )
+    {
+        console.log(
+            JSON.stringify(
+                contractUtxos.map( u => u.toJson() ),
+                undefined,
+                2
+            )
+        );
+        throw new Error("missing");
+    }
 
     const prvt = PrivateKey.fromCbor(
         JSON.parse(
