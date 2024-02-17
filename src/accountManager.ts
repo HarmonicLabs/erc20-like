@@ -276,7 +276,7 @@ export const accountManager = pfn([
                     ).$(
                         pdelay(
                             pmatch( punsafeConvertType( _senderRdmr, AccountManagerRdmr.type ) )
-                            .onTransfer(({ amount }) => amount.gt( 0 ))
+                            .onTransfer(({ amount, to }) => amount.gt( 0 ))
                             // sender redeemer is not transfer
                             ._( _ => perror( bool ) )
                         )
@@ -384,6 +384,11 @@ export const accountManager = pfn([
             const receiverInAccount = plet( getAccount.$( receiverIn ) );
             const receiverOutAccount = plet( getAccount.$( receiverOut ) );
 
+            // inlined
+            // we check that the credentials passed via transfer redeemer
+            // match the credentials present in the input with `Receive`
+            const isIntendedReceiver = to.eq( receiverInAccount.credentials );
+
             // cardano node CEK machine wants the `trace` here or else gets mad
             // both akien and plu-ts machines give no problems without the trace
             // but the node doesn't like it
@@ -423,6 +428,7 @@ export const accountManager = pfn([
             .and( noNewAccounts )
             .and( senderIsValid )
             .and( senderOutIsValid )
+            .and( isIntendedReceiver )
             .and( preservedSender )
             .and( preservedReceiver )
             .and( correctTransfer )

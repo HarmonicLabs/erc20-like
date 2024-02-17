@@ -1,9 +1,9 @@
-import { PAssetsEntry, PBool, PScriptContext, PValidatorHash, Term, bool, bs, data, list, pBSToData, pDataI, perror, pfn, phoist, pif, pisEmpty, plet, plookup, pmakeUnit, pmatch, pnot, pserialiseData, psha2_256, pstruct, punBData, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
+import { PAssetsEntry, PBool, PScriptContext, PValidatorHash, Term, bool, bs, data, int, list, pBSToData, pDataI, perror, pfn, phoist, pif, pisEmpty, plet, plookup, pmakeUnit, pmatch, pnot, pserialiseData, psha2_256, pstruct, punBData, punsafeConvertType, unit } from "@harmoniclabs/plu-ts";
 import { FreezeableAccount, FreezeableAccountState } from "./types/Account";
 import { passert } from "./passert";
 
 export const AccountFactoryRdmr = pstruct({
-    New: {}, // Mint
+    New: { inputIdx: int }, // Mint
     Delete: {} // Burn
 })
 
@@ -23,19 +23,19 @@ export const accountFactory = pfn([
     return passert.$(
         pmatch( rdmr )
         .onDelete( _ => 
-            tx.mint.every(({ fst: policy, snd: assets }) =>
-                pnot.$( policy.eq( ownPolicy ) )
-                .or(
+            tx.mint.some(({ fst: policy, snd: assets }) =>
+                policy.eq( ownPolicy )
+                .and(
                     assets.every(({ snd: qty }) => qty.lt( 0 ) )
                 )
             )
         )
-        .onNew( _ => {
+        .onNew(({ inputIdx }) => {
 
             // inlined
             const onlyOneInput = pisEmpty.$( tx.inputs.tail );
 
-            const { utxoRef, resolved: fstIn } = tx.inputs.head;
+            const { utxoRef, resolved: chosenInput } = tx.inputs.at( inputIdx );
 
             const expectedAssetName = plet(
                 psha2_256.$(
@@ -49,7 +49,7 @@ export const accountFactory = pfn([
             );
 
             // inlined
-            const inputHasNoOwnTokens = fstIn.value.every(({ fst: policy, snd: assets }) =>
+            const inputHasNoOwnTokens = chosenInput.value.every(({ fst: policy }) =>
                 pnot.$( policy.eq( ownPolicy ) )
             );
 
@@ -76,7 +76,12 @@ export const accountFactory = pfn([
             // inlined
             const fstOutToManager = pmatch( fstOut.address.credential )
             .onPScriptCredential(({ valHash }) => valHash.eq( accountManagerHash ) )
-            .onPPubKeyCredential( _ => perror( bool ) );
+            .onPPubKeyCredential( _ => perror( bool ) )
+            .and(
+                fstOut.address.stakingCredential.eq(
+                    chosenInput.address.stakingCredential
+                )
+            );
 
             // inlined
             const correctOutput =
@@ -93,7 +98,7 @@ export const accountFactory = pfn([
                     FreezeableAccount.Account({
                         amount: pDataI( 0 ),
                         currencySym: pBSToData.$( ownPolicy ),
-                        credentials: fstIn.address.credential as any,
+                        credentials: chosenInput.address.credential as any,
                         state: FreezeableAccountState.Ok({})
                     })
                 ))

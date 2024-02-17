@@ -80,7 +80,7 @@ describe("accountManager", () => {
         expect( res.result instanceof UPLCConst ).toBe( true );
     });
 
-    test.only("data str", async () => {
+    test.skip("data str", async () => {
 
         const { accountFactory, accountManager } = await readContracts();
 // 

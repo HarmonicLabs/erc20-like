@@ -20,7 +20,8 @@
         "mintFrezeableTx": "npm run build && node dist/scripts/mintFrezeableTx.js",
         "transferFstToSndTx": "npm run build && node dist/scripts/transferFstToSndTx.js",
         "transferFrozen": "npm run build && node dist/scripts/transferFrozen.js",
-        "changeStateTx": "npm run build && node dist/scripts/changeStateTx.js"
+        "changeStateTx": "npm run build && node dist/scripts/changeStateTx.js",
+        "printContractsHex": "npm run build && node dist/scripts/printContractsHex.js"
     },
     "publishConfig": {
         "registry": "https://registry.npmjs.org"
