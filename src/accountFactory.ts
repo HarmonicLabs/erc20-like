@@ -5,7 +5,7 @@ import { passert } from "./passert";
 export const AccountFactoryRdmr = pstruct({
     New: { inputIdx: int }, // Mint
     Delete: {} // Burn
-})
+});
 
 export const accountFactory = pfn([
     PValidatorHash.type,

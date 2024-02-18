@@ -173,9 +173,7 @@ export const accountManager = pfn([
             );
 
             const ownAssets = plet( getOwnAssets.$( ownValue ) );
-
             const ownAsset = plet( ownAssets.head );
-
             const isValidAccount =
                 // single asset of policy
                 ownAssets.length.eq( 1 )

@@ -12,4 +12,4 @@ export const FreezeableAccount = pstruct({
         currencySym: PCurrencySymbol.type,
         state: FreezeableAccountState.type
     }
-})
+});
